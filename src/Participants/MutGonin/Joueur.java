@@ -1,9 +1,6 @@
-package Participants.UnrealTeam;
+package Participants.MutGonin;
 
 import Othello.Move;
-import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Managage the player
@@ -18,7 +15,7 @@ public class Joueur extends Othello.Joueur
     private int enemyID;
     private GameBoard gameBoard;
 
-    private AI_V0 ourAI;
+    private AI ourAI;
 
     public Joueur(int depth, int playerID)
     {
@@ -27,22 +24,17 @@ public class Joueur extends Othello.Joueur
 	this.playerID = playerID;
 	this.enemyID = 1 - playerID;
 	this.gameBoard = new GameBoard();
-	this.ourAI = new AI_V0(playerID, depth, size * size);
+	this.ourAI = new AI(playerID, depth, size * size);
     }
 
     /**
-     * Method called every time the player has to play
+     * Method called every time the player has to play.
+     * @param move  The last move of the enemy. Null if no move was done.
+     * @return Our move.
      */
     @Override
     public Move nextPlay(Move move)
     {
-	// Ici, vous devrez
-	// - Mettre à jour votre représentation du jeu en fonction du coup joué par l'adversaire
-	// - Décider quel coup jouer (alpha-beta!!)
-	// - Remettre à jour votre représentation du jeu
-	// - Retourner le coup choisi
-	Move enemyMove = null;
-
 	// Build the root of the algorithm tree.
 	Node root = new Node(null);
 	root.setEvaluation(ourAI.evaluationFunction(gameBoard, playerID, false));
@@ -51,13 +43,6 @@ public class Joueur extends Othello.Joueur
 	    {
 	    //Add enemy coin to the gameboard
 	    gameBoard.addCoin(move, enemyID);
-	    enemyMove = move;
-
-	    System.out.println("Enemy move: " + move.i + ";" + move.j);
-
-	    // The enemy had a valid move. Add it to the tree.
-	    //root.setMove(enemyMove);
-	    //root.setEvaluation(ourAI.evaluationFunction(gameBoard, enemyID));
 	    }
 
 	// Build the tree.
@@ -70,14 +55,8 @@ public class Joueur extends Othello.Joueur
 	//Add player coin to the gameboard
 	if (ourMove != null)
 	    {
-	    System.out.println("Our move: " + ourMove.i + ";" + ourMove.j);
 	    this.gameBoard.addCoin(ourMove, playerID);
-	    } else
-	    {
-	    System.out.println("Our move: null");
-	    }
+	    } 
 	return ourMove != null ? ourMove : null;
-
     }
-
 }

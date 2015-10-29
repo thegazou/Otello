@@ -1,21 +1,17 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-package Participants.UnrealTeam;
+// Copyright Horia Mut & Nicolas Gonin
+// horiamut@msn.com | Doesn't want to give the email, that ahole (DO NOT ATTEMPT FACEBOOK)
+package Participants.MutGonin;
 
 import Othello.Move;
 import java.util.ArrayList;
 import java.util.Iterator;
 
 /**
- *
+ * Class containing the AI functionality.
  * @author Nicolas Gonin, Horia Mut
  */
-public class AI_V0
+public class AI
 {
-
     // Attributes
     public static final int INF = Integer.MAX_VALUE;
     private static final int BEGINING_NUMBER_OF_BOARD_COINS = 4;
@@ -31,63 +27,103 @@ public class AI_V0
     /**
      * AI constructor.
      *
-     * @param playerID
-     * @param depth
+     * @param playerID  The player's ID.
+     * @param depth     The depth of the algorithm future move lookup.
+     * @param size      GameBoard size
      */
-    public AI_V0(int playerID, int depth, int size)
+    public AI(int playerID, int depth, int size)
     {
         this.player = playerID;
         this.depth = depth;
         this.gameBoardSize = size;
     }
 
+    /**
+     * The core of the algorithm, the evaluation function gives an evaluation
+     * for a specific move for a player.
+     *
+     * @param board
+     * @param playerID
+     * @param skippedMove       If the move that is being evaluated must be skipped.
+     * @return
+     */
     public int evaluationFunction(GameBoard board, int playerID, boolean skippedMove)
     {
+        // The enemy player's ID.
+        int enemyID = 1 - playerID;
+        
         // Get how many coins we have and they have.
         int coins = board.getCoinCount(playerID); // Normal value
-        int coinsEnemy = board.getCoinCount(1 - playerID);
+        int coinsEnemy = board.getCoinCount(enemyID);
 
         // Get the number of available blank cases.
         int availableBoardSpaces = gameBoardSize - (coins + coinsEnemy);
         int movesPlayed = availableBoardSpaces - BEGINING_NUMBER_OF_BOARD_COINS;
 
-        int edgeCoins = board.getEdgeCoinCount(playerID);               // Worst kind of coins to have, they can easily be taken.
-        int edgeCoinsEnemy = board.getEdgeCoinCount(1 - playerID);      // Best to have in order to capture them.
-        int cornerCoins = board.getCornerCoinCount(playerID);           // Best kind of coins, cannot be taken.
-        int cornerCoinsEnemy = board.getCornerCoinCount(1 - playerID);  // Worst kind of coins, cannot be taken.
+        // The corners of the gameboard.
+        int cornerCoins = board.getCornerCoinCount(playerID);       // Best kind of coins, cannot be taken.
+        int cornerCoinsEnemy = board.getCornerCoinCount(enemyID);   // Worst kind of coins, cannot be taken.
+
+        // Edge coins are coins on the edge of the board.
+        int edgeCoins = board.getEdgeCoinCount(playerID) - cornerCoins * 2;           // Worst kind of coins to have, they can easily be taken.
+        int edgeCoinsEnemy = board.getEdgeCoinCount(enemyID) - cornerCoinsEnemy * 2;  // Best to have in order to capture them.
 
         // Retrieve the number of moves possible for both players.
         int nrMovesStillPossible = board.getPossibleMoves(playerID).size();
-        int nrMovesStillPossibleEnemy = board.getPossibleMoves(1 - playerID).size();
+        int nrMovesStillPossibleEnemy = board.getPossibleMoves(enemyID).size();
         int deltaMoves = nrMovesStillPossible - nrMovesStillPossibleEnemy;
 
         int total = 0;
-        int ratioOurMoves = 10;
-        int ratioEnemyMoves = -10;
-        if (deltaMoves < 0)
-            {
-            // The enemy is winning.
-            total -= nrMovesStillPossibleEnemy * 500;
-            ratioEnemyMoves *= 10;
-            }
+        int valueDeltaMoves = 5;
+
+        // Values of our coins.
+        int valueCoins = 1;
+        int valueCornerCoins = 65;
+        int valueEdgeCoins = 5;
+
+        // Values of enemy's coins.
+        int valueEnemyCornerCoins = -valueCornerCoins*2;
+        int valueEnemyEdgeCoins = -valueEdgeCoins;
 
         // If we have to skip this move.
         if (skippedMove && nrMovesStillPossibleEnemy > 0)
             {
-            total -= 5000;
+            total -= 500;
             }
 
         if (movesPlayed <= OPTIMAL_MOVES_TO_WIN)
             {
-            total += coins * 1 + coinsEnemy * -1 + cornerCoins * 5000 + cornerCoinsEnemy * -1000 + nrMovesStillPossible * ratioOurMoves + nrMovesStillPossibleEnemy * ratioEnemyMoves + edgeCoins * -200 + edgeCoinsEnemy * 1000;
-            } else
+            total  += coins * valueCoins
+                    + coinsEnemy * -valueCoins
+                    + cornerCoins * valueCornerCoins
+                    + cornerCoinsEnemy * valueEnemyCornerCoins
+                    + edgeCoins * valueEdgeCoins
+                    + edgeCoinsEnemy * valueEnemyEdgeCoins
+                    + deltaMoves * valueDeltaMoves;
+            } 
+        else
             {
-            total += coins * -1 + coinsEnemy * -1 + cornerCoins * 50000 + cornerCoinsEnemy * -10000 + nrMovesStillPossible * 10 + nrMovesStillPossibleEnemy * -100 + edgeCoins * -200 + edgeCoinsEnemy * 1000;
+            valueDeltaMoves = 10;
+            valueCoins = 0;
+            
+            total  += coins * valueCoins
+                    + coinsEnemy * -valueCoins
+                    + cornerCoins * valueCornerCoins
+                    + cornerCoinsEnemy * valueEnemyCornerCoins
+                    + edgeCoins * valueEdgeCoins
+                    + edgeCoinsEnemy * valueEnemyEdgeCoins
+                    + deltaMoves * valueDeltaMoves;
             }
 
         return total;
     }
 
+    /**
+     * Builds a Node tree containing all the moves that are possible to be done by the player.
+     * @param gameBoard The Gameboard.
+     * @param root      The root of the tree that will be built.
+     * @param playerID  The player's ID.
+     */
     public void buildTree(GameBoard gameBoard, Node root, int playerID)
     {
         // Fill the tree with our possible moves.
@@ -103,11 +139,34 @@ public class AI_V0
             }
     }
 
+    /**
+     * Retrieve the best move possible for the player with the game board in a
+     * specific state.
+     *
+     * @param gameBoard The current game board.
+     * @param root A Tree root containing all possible moves of the player.
+     * @param depth Depth of the algorithm. The number of moves it will analyze
+     * after each possible move has been evaluated.
+     * @param playerID The player's ID.
+     * @return
+     */
     public Move getBestMove(GameBoard gameBoard, Node root, int depth, int playerID)
     {
         return alphaBetaN(gameBoard, root, depth, MAX, root.getEvaluation(), playerID, false).getMove();
     }
 
+    /**
+     * Alpha-Beta recursive algorithm for the AI.
+     *
+     * @param board
+     * @param root
+     * @param depth
+     * @param minOrMax Minimize the evaluation or maximize?
+     * @param parentValue
+     * @param currentPlayer
+     * @param skippedMove
+     * @return
+     */
     private Node alphaBetaN(GameBoard board, Node root, int depth, int minOrMax, int parentValue, int currentPlayer, boolean skippedMove)
     {
         int nrMovesStillPossible = board.getPossibleMoves(currentPlayer).size();
@@ -138,9 +197,9 @@ public class AI_V0
         if (allPossibleMoves.isEmpty())
             {
             // If we can't, we skip our move.
-            //optMove.setEvaluation(evaluationFunction(board, player));
             optVal = alphaBetaN(board, root, depth - 1, -minOrMax, optVal, -currentPlayer, true).getEvaluation();
-            } else
+            } 
+        else
             {
             while (!allPossibleMoves.isEmpty() && !stopClause)
                 {
@@ -166,7 +225,6 @@ public class AI_V0
                     if (optVal * minOrMax > parentValue * minOrMax)
                         {
                         stopClause = true;
-                        //break;
                         }
                     }
                 }
@@ -175,5 +233,4 @@ public class AI_V0
         optMove.setEvaluation(optVal);
         return optMove;
     }
-
 }
